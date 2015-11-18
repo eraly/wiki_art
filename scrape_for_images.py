@@ -6,6 +6,7 @@ import concurrent.futures
 from time import sleep
 import re
 from multiprocessing import Pool
+from Queue import Queue
 import sys
 from collections import defaultdict
 
@@ -39,11 +40,15 @@ class ImageScrape(object):
         self.paintings_df = pd.DataFrame(columns=image_df_cols)
 
     def build_df(self):
+        total_paintings_scraped = 0
         for a_page in self._collect_pages():
+            sleep(5)
             for a_painting_link in self._collect_links_to_paintings(a_page):
+                sleep(2)
                 a_painting_df = self._scrape_painting_link(a_painting_link)
                 self.paintings_df = self.paintings_df.append(a_painting_df,ignore_index=True)
-            if len(self.paintings_df) >= 4000:
+                total_paintings_scraped += 1
+            if total_paintings_scraped >= 2500:
                 print self.gallery_type, "Limit reached"
                 break
         self.paintings_df['from'] = self.gallery_type
@@ -58,7 +63,6 @@ class ImageScrape(object):
 
     def _collect_pages(self):
         soup = to_soup(self.gallery_page)
-        #print self.gallery_page
         page_num_list = [int(x.text) for x in soup.select('.pager-items a') if x.text != 'Next' and x.text != 'Previous' and x.text != '...']
         if page_num_list:
             max_page_num = max(page_num_list)
@@ -72,26 +76,31 @@ class ImageScrape(object):
 
     def _scrape_painting_link(self,a_painting_link):
         soup = to_soup(a_painting_link)
-        print a_painting_link
-        painting_dict = dict(zip(image_df_cols,[""]*len(image_df_cols)))
+        painting_dict = dict(zip(image_df_cols,[[""]]*len(image_df_cols)))
         try:
+            print "=======================    Started    ======================",a_painting_link
             painting_dict['link_to'] = [a_painting_link]
-            painting_dict['jpeg_url'] = [soup.select('#paintingImage')[0]['href']]
             painting_dict['local_jpeg'] = [to_file_name(a_painting_link)]
+            my_jpeg_url_from = soup.select('#paintingImage')[0]
+            print ">>>>"
+            painting_dict['jpeg_url'] = [soup.select('#paintingImage')[0]['href']]
             painting_dict['Title'] = [soup.find('h1').findChildren()[0].getText()]
             for a_row in soup.select('.DataProfileBox p'):    
+            	#print a_row
                 if re.search(':', a_row.getText()):
                     k,v = "".join(a_row.getText().splitlines()).split(":")
                     k,v = k.strip(),v.strip()
-                    if k in image_df_cols:
+                    #print k,v
+                    if k and k in image_df_cols:
                         painting_dict[k] = [v]
+            print "========================    Finished   ======================",a_painting_link
         except:
-            #print "Raised exception, ",a_painting_link
-            pass
+            print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+            print "Raised exception, ",a_painting_link
+            print "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+            return pd.DataFrame(data=painting_dict,columns=image_df_cols)
         else:
-            #print "Raised error, ",a_painting_link
-            pass
-        return pd.DataFrame(data=painting_dict,columns=image_df_cols)
+            return pd.DataFrame(data=painting_dict,columns=image_df_cols)
 
 def call_image_scrape(scrape_style):
     a_scraper = ImageScrape(scrape_style)
@@ -105,6 +114,10 @@ if __name__ == '__main__':
     styles_to_scrape_parallel = \
     ["photorealism", "contemporary-realism", "american-realism", "hyper-realism", "post-impressionism", "pointillism", "cloisonnism", "fauvism", "intimism", "cubism", "cubo-futurism", "cubo-expressionism", "tubism", "transavantgarde", "transautomatism", "mechanistic-cubism", "futurism", "abstract-art", "abstract-expressionism","realism","impressionism"]
     
-    my_pool = Pool(len(styles_to_scrape_parallel))
-    run_results = my_pool.map( call_image_scrape, styles_to_scrape_parallel) 
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for a_style, style_files in zip(styles_to_scrape_parallel, executor.map(call_image_scrape, styles_to_scrape_parallel)):
+            print('%s is DONE: %s' % (a_style, style_files))
+
+    #call_image_scrape('photorealism')
+
 

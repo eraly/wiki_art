@@ -12,7 +12,7 @@ def chunks(l, n):
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
 
-def get_painting_jpg(url_pair,jpeg_dir='image_dir/'):
+def get_painting_jpg(url_pair,jpeg_dir='image_dir/saved_images/'):
     the_link,the_filename = url_pair.split(",")
     if the_link and the_filename:
         urllib.urlretrieve(the_link,jpeg_dir+the_filename+'.jpg')
@@ -40,7 +40,7 @@ def kick_off(style):
                     #print('MY_INFO: %r page is %d bytes' % (url, len(data)))
                     pass
     print "Done with:", style
-    return a_chunk[0]
+    return links_filename
 
 if __name__ == '__main__':
 
