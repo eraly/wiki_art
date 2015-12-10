@@ -12,6 +12,8 @@ from lasagne.init import Constant, Normal
 from skimage import feature
 from skimage.color import rgb2gray
 from skimage.exposure import equalize_hist
+from skimage.filters.rank import entropy
+from skimage.morphology import disk
 '''
 note: Conv2DDNNLayer only works on CudaDNN enabled systems
 additionally Conv2DLayer can return different sizes from Conv2DDNNLayer
@@ -90,6 +92,7 @@ class ImagePipeline(object):
     def _make_edges(self):
         self.current_image = rgb2gray(self.current_image)
         self.current_image = equalize_hist(self.current_image)
+        self.current_image = entropy(self.current_image,disk(4))
         #self.current_image = feature.canny(self.current_image)
 
     def process_image(self,image_file,a_class):
@@ -128,7 +131,7 @@ if __name__ == '__main__':
     #Vars
     subset_size = 4000
     image_info_dict = {}
-    scale_size = 120
+    scale_size = 256
     #image_shape = (None,3,scale_size,scale_size)
     image_shape = (None,1,scale_size,scale_size)
 
@@ -198,9 +201,10 @@ if __name__ == '__main__':
         #('pool1', layers.MaxPool2DLayer),
         ('conv11', layers.Conv2DLayer),
         #('pool1', layers.Pool2DLayer),
-        #('pool1', layers.MaxPool2DLayer),
+        ('pool1', layers.MaxPool2DLayer),
         #('dropout1', DropoutLayer),
-        ('pool2', layers.Pool2DLayer),
+        #('pool2', layers.Pool2DLayer),
+        #('pool2', layers.MaxPool2DLayer),
         #('conv20', layers.Conv2DLayer),
         #('conv21', layers.Conv2DLayer),
         #('pool2', layers.Pool2DLayer),
@@ -230,21 +234,21 @@ if __name__ == '__main__':
         #conv10_stride=3,
         #conv10_border_mode="valid",
         ##
-        conv10_num_filters=4, 
-        conv10_pad=3, 
+        conv10_num_filters=8, 
+        #conv10_pad=3, 
         conv10_nonlinearity=rectify,
-        conv10_filter_size=(6,6), 
+        conv10_filter_size=(24,24), 
         #conv10_W=Normal(std=0.01, mean=0),
-        conv10_stride=3,
+        #conv10_stride=3,
         ##
-        conv11_num_filters=8, 
-        conv11_pad=1, 
+        conv11_num_filters=32, 
+        #conv11_pad=1, 
         conv11_nonlinearity=rectify,
-        conv11_filter_size=(3, 3), 
+        conv11_filter_size=(15, 15), 
         #conv11_W=Normal(std=0.01, mean=0),
         conv11_stride=2,
         ##
-        #pool1_pool_size=(2, 2),
+        pool1_pool_size=(2, 2),
         #pool1_mode='average_exc_pad',
         #dropout1_p = 0.2,
         ##
@@ -260,8 +264,8 @@ if __name__ == '__main__':
         #conv21_filter_size=(4, 4), 
         #conv21_W=Normal(std=0.01, mean=0),
         ##
-        pool2_pool_size=(2, 2),
-        pool2_mode='average_exc_pad',
+        #pool2_pool_size=(3, 3),
+        #pool2_mode='average_exc_pad',
         #pool2_stride=2,
         #dropout2_p = 0.05,
         ##
@@ -334,7 +338,7 @@ if __name__ == '__main__':
 	##pool5_stride=2,
 	###
 	##dropout1_p = 0.2,
-	hidden1_num_units = 256,
+	hidden1_num_units = 1024,
 	hidden1_nonlinearity=rectify,
 	##dropout2_p = 0.4,
 	#hidden2_num_units=1024,
